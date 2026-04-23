@@ -9,12 +9,12 @@ from PIL import Image
 from datetime import datetime
 from sympy import sympify, diff, integrate, symbols, latex, lambdify, Function, dsolve, Eq
 
-# 1. CONFIGURAÇÕES DE ESTÉTICA GROK (ULTRA DARK)
-st.set_page_config(page_title="EduHub AI - Ultimate", layout="centered", page_icon="🧠")
+# 1. CONFIGURAÇÕES DE ESTÉTICA GROK (ULTRA DARK) - IDENTIDADE RUFINO 2.0
+st.set_page_config(page_title="Rufino 2.0", layout="centered", page_icon="🧠")
 
 st.markdown("""
     <style>
-    /* Design Sistema Grok */
+    /* Design Sistema Rufino 2.0 (Grok Style) */
     .stApp { background-color: #000000; color: #ffffff; }
     
     /* Barra de Busca Central */
@@ -59,7 +59,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MOTOR DE INTELIGÊNCIA E AUXILIARES
+# 2. MOTOR DE INTELIGÊNCIA RUFINO
 wikipedia.set_lang("pt")
 
 def corrigir_sintaxe(texto):
@@ -70,9 +70,9 @@ def corrigir_sintaxe(texto):
 
 if 'historico' not in st.session_state: st.session_state.historico = []
 
-# --- MENU LATERAL (CONFIGURAÇÕES E ESTUDOS) ---
+# --- MENU LATERAL (FUNÇÕES RUFINO 2.0) ---
 with st.sidebar:
-    st.title("🛡️ Funções")
+    st.title("🛡️ Rufino 2.0")
     modo = st.radio("Modo de Operação:", ["🔍 Omnisciente", "🧬 Exatas", "👁️ Vision"])
     
     st.divider()
@@ -81,7 +81,7 @@ with st.sidebar:
         with st.empty():
             for t in range(25*60, 0, -1):
                 m, s = divmod(t, 60)
-                st.metric("Tempo", f"{m:02d}:{s:02d}")
+                st.metric("Tempo Rufino", f"{m:02d}:{s:02d}")
                 time.sleep(1)
             st.balloons()
     
@@ -91,17 +91,17 @@ with st.sidebar:
         st.rerun()
 
 # --- INTERFACE CENTRAL ---
-st.markdown("<h1 style='text-align: center; margin-top: 30px;'>EduHub AI</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: 30px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
 
 tab_chat, tab_ferramentas = st.tabs(["💬 Chat", "🧰 Ferramentas"])
 
 with tab_chat:
     # Barra de Pesquisa Única
-    prompt = st.text_input("", placeholder="Pergunte sobre história, física ou resolva uma equação...", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="Rufino 2.0: Pergunte qualquer coisa...", label_visibility="collapsed")
     
     if st.button("Executar"):
         if prompt:
-            with st.spinner(""):
+            with st.spinner("Rufino 2.0 processando..."):
                 try:
                     # LÓGICA CONFORME O MODO
                     if modo == "🧬 Exatas":
@@ -115,19 +115,19 @@ with tab_chat:
                         saida = wikipedia.summary(prompt, sentences=5)
                         tipo = "text"
                     else:
-                        saida = "Aguardando imagem para análise..."
+                        saida = "Aguardando imagem na aba ferramentas para análise..."
                         tipo = "text"
                     
                     st.session_state.historico.append({"in": prompt, "out": saida, "type": tipo})
                 except:
-                    st.error("Erro no processamento. Verifique a sintaxe ou o termo.")
+                    st.error("Erro no processamento. Rufino 2.0 recomenda verificar a escrita.")
 
     # EXIBIÇÃO DO FEED (ORDEM INVERSA)
     for chat in reversed(st.session_state.historico):
         st.markdown(f"**❯ {chat['in']}**")
         st.markdown(f"<div class='result-box'>{chat['out']}</div>", unsafe_allow_html=True)
         if chat['type'] == "math":
-            st.latex(chat['out'].split('|')[0].replace('Resultado:', ''))
+            st.latex(chat['out'].replace('|', r'\\'))
         st.markdown("<br>", unsafe_allow_html=True)
 
 with tab_ferramentas:
@@ -139,21 +139,23 @@ with tab_ferramentas:
         if foto:
             img = Image.open(foto)
             st.image(img, use_container_width=True)
-            st.info("Imagem carregada. Use o modo 'Vision' no chat para analisar.")
+            st.info("Imagem carregada no Rufino 2.0. Use o modo 'Vision' no chat.")
 
     with col2:
-        st.subheader("📓 Notas Rápidas")
-        notas = st.text_area("Bloco de rascunho:", height=200)
-        if st.button("Salvar em PDF (Simulado)"):
-            st.download_button("Baixar TXT", notas, "notas_estudo.txt")
+        st.subheader("📓 Notas do Rufino")
+        notas = st.text_area("Rascunho de estudos:", height=200)
+        if st.button("Salvar Notas"):
+            st.download_button("Baixar TXT", notas, "notas_rufino.txt")
 
     st.divider()
-    st.subheader("📊 Gráficos de Função")
-    g_input = st.text_input("Função para gráfico (ex: x**2):")
+    st.subheader("📊 Gráficos Rufino 2.0")
+    g_input = st.text_input("Função (ex: sin(x)):")
     if g_input:
-        f_g = sympify(corrigir_sintaxe(g_input))
-        f_num = lambdify(symbols('x'), f_g, "numpy")
-        xv = np.linspace(-10, 10, 100)
-        fig = go.Figure(go.Scatter(x=xv, y=f_num(xv), line=dict(color="white")))
-        fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig)
+        try:
+            f_g = sympify(corrigir_sintaxe(g_input))
+            f_num = lambdify(symbols('x'), f_g, "numpy")
+            xv = np.linspace(-10, 10, 100)
+            fig = go.Figure(go.Scatter(x=xv, y=f_num(xv), line=dict(color="white")))
+            fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig)
+        except: st.error("Erro ao gerar gráfico.")
