@@ -5,7 +5,7 @@ import wikipedia
 import re
 import time
 from PIL import Image
-from sympy import sympify, diff, integrate, symbols, latex, lambdify
+from sympy import sympify, diff, symbols, latex
 from duckduckgo_search import DDGS
 
 # 1. ESTÉTICA GROK (ULTRA-DARK & FEED CONTÍNUO)
@@ -13,7 +13,6 @@ st.set_page_config(page_title="Rufino 2.0", layout="centered", page_icon="🧠")
 
 st.markdown("""
     <style>
-    /* Fundo Total Black */
     .stApp { background-color: #000000; color: #ffffff; }
     
     /* Barra de Busca Estilo Grok */
@@ -37,20 +36,19 @@ st.markdown("""
         width: 100%;
     }
 
-    /* Estilo das Perguntas no Feed */
+    /* Feed de Histórico */
     .user-query {
-        color: #888;
+        color: #666;
         font-weight: bold;
-        margin-top: 40px;
-        font-size: 13px;
+        margin-top: 35px;
+        font-size: 14px;
         text-transform: uppercase;
         letter-spacing: 1px;
     }
 
-    /* Box de Resposta Estruturada (Feed) */
     .result-box {
         background-color: #0f0f0f;
-        padding: 30px;
+        padding: 25px;
         border-radius: 15px;
         border: 1px solid #222;
         margin-top: 10px;
@@ -59,104 +57,94 @@ st.markdown("""
         border-left: 4px solid #ffffff;
     }
     
-    .section-title { color: #00fbff; font-weight: bold; font-size: 19px; margin-top: 15px; }
-    .source-tag { color: #555; font-size: 12px; font-style: italic; }
+    .section-title { color: #00fbff; font-weight: bold; font-size: 19px; margin-bottom: 8px; }
+    .source-tag { color: #444; font-size: 11px; font-style: italic; }
 
-    /* Esconder elementos padrão */
+    /* UI Fixes */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MOTORES DE INTELIGÊNCIA RUFINO (100% PORTUGUÊS)
+# 2. MOTOR DE INTELIGÊNCIA ROBUSTO (PORTUGUÊS 100%)
 wikipedia.set_lang("pt")
 
-def limpar_matematica(texto):
-    texto = re.sub(r'(\d)([a-zA-Z\(])', r'\1*\2', texto)
-    trads = {'sen': 'sin', 'tg': 'tan', '^': '**', 'ln': 'log'}
-    for pt, en in trads.items(): texto = texto.replace(pt, en)
-    return texto
-
-def motor_explica_tudo(query):
-    # Lógica Matemática
+def motor_rufino_robusto(query):
+    query_limpa = query.strip().lower()
+    
+    # --- TENTATIVA 1: MATEMÁTICA ---
     try:
-        if any(c in query for c in '+-*/^') or 'x' in query:
-            x_s = symbols('x')
-            f = sympify(limpar_matematica(query))
-            return f"""
-            <div class='section-title'>🧬 Análise Matemática</div>
-            O Rufino 2.0 identificou uma operação simbólica:
-            <br><br>
-            **Resultado:** $${latex(f)}$$
-            **Derivada:** $${latex(diff(f, x_s))}$$
-            """
+        # Detecta se há números ou operadores
+        if any(c in query_limpa for c in '0123456789+-*/^'):
+            q_math = re.sub(r'(\d)([a-z\(])', r'\1*\2', query_limpa).replace('^', '**')
+            res = sympify(q_math)
+            return f"<div class='section-title'>🧬 Cálculo</div>Resultado: $${latex(res)}$$"
     except: pass
 
-    # Lógica de Busca Global (Sem Filtros)
+    # --- TENTATIVA 2: BUSCA GLOBAL (WIKI + WEB LIVE) ---
+    resumo_final = ""
+    
+    # Wikipedia com busca por aproximação (corrige erros ortográficos)
     try:
-        resumo = wikipedia.summary(query, sentences=8)
-        explicacao = f"<div class='section-title'>📚 Explicação Completa</div>{resumo}<br><br><div class='section-title'>🌐 Pesquisa Web Live</div>"
-        
-        with DDGS() as ddgs:
-            # Busca filtrada para região Brasil/Portugal
-            links = [r for r in ddgs.text(query, region='br-pt', max_results=3)]
-            for r in links:
-                explicacao += f"• {r['body']}<br><span class='source-tag'>Fonte: {r['href']}</span><br><br>"
-        return explicacao
-    except:
-        return "Rufino 2.0 não encontrou dados suficientes na rede. Tente reformular a pergunta."
+        sugestoes = wikipedia.search(query_limpa)
+        if sugestoes:
+            # Pega o resultado mais provável, ignorando erros de digitação
+            conteudo = wikipedia.summary(sugestoes[0], sentences=8)
+            resumo_final = f"<div class='section-title'>📚 Explicação</div>{conteudo}"
+    except: pass
 
-# 3. GESTÃO DE HISTÓRICO (FEED ESTILO GROK)
+    # Busca Web Live (Reforço Crítico via DuckDuckGo)
+    try:
+        with DDGS() as ddgs:
+            # region 'br-pt' garante respostas no nosso idioma
+            links = [r for r in ddgs.text(query_limpa, region='br-pt', max_results=3)]
+            if links:
+                if resumo_final:
+                    resumo_final += "<br><br><div class='section-title'>🌐 Contexto Live</div>"
+                else:
+                    resumo_final = "<div class='section-title'>🌐 Resultados da Web</div>"
+                
+                for r in links:
+                    resumo_final += f"• {r['body']}<br><span class='source-tag'>Fonte: {r['href']}</span><br><br>"
+    except: pass
+
+    return resumo_final if resumo_final else "Rufino 2.0 não encontrou dados. Tente usar outras palavras ou simplificar."
+
+# 3. GESTÃO DE ESTADO (FEED)
 if 'feed' not in st.session_state:
     st.session_state.feed = []
 
 # --- INTERFACE CENTRAL ---
-st.markdown("<h1 style='text-align: center; margin-top: 30px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #555;'>Omnisciente • Sem Filtros • Feed Contínuo</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: 20px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #444;'>Omnisciente • Sem Filtros • Inteligência Total</p>", unsafe_allow_html=True)
 
-# Container de Entrada Fixo no Fluxo
 with st.container():
-    pergunta_usuario = st.text_input("", placeholder="Rufino 2.0: Pergunte absolutamente qualquer coisa...", key="input_main", label_visibility="collapsed")
+    # Barra de pesquisa principal
+    prompt = st.text_input("", placeholder="Pergunte qualquer coisa (mesmo com erros de digitação)...", key="main_input", label_visibility="collapsed")
     if st.button("Consultar Rufino"):
-        if pergunta_usuario:
+        if prompt:
             with st.spinner(""):
-                resposta = motor_explica_tudo(pergunta_usuario)
-                # Insere no início para o Feed mostrar o mais novo primeiro
-                st.session_state.feed.insert(0, {"q": pergunta_usuario, "a": resposta})
+                resposta = motor_rufino_robusto(prompt)
+                # Adiciona ao topo do feed (estilo Grok/Chat)
+                st.session_state.feed.insert(0, {"q": prompt, "a": resposta})
 
 st.divider()
 
-# --- EXIBIÇÃO DO FEED (ORDEM DE CHAT) ---
+# EXIBIÇÃO DO FEED CONTÍNUO
 for item in st.session_state.feed:
     st.markdown(f"<div class='user-query'>❯ {item['q']}</div>", unsafe_allow_html=True)
     st.markdown(f"<div class='result-box'>{item['a']}</div>", unsafe_allow_html=True)
 
-# --- SIDEBAR (FERRAMENTAS AUXILIARES) ---
+# SIDEBAR (FERRAMENTAS)
 with st.sidebar:
     st.title("🛡️ Rufino 2.0")
-    st.caption("Versão Final Omnisciente")
-    
     st.divider()
     st.subheader("👁️ Vision")
-    foto = st.file_uploader("Análise de Imagem", type=["jpg", "png", "jpeg"])
+    foto = st.file_uploader("Upload de imagem", type=["jpg", "png", "jpeg"])
     if foto:
         st.image(Image.open(foto), use_container_width=True)
-        st.info("Imagem carregada no sistema Rufino.")
-
+    
     st.divider()
-    st.subheader("📊 Gráficos")
-    g_in = st.text_input("Função (ex: sin(x)):")
-    if g_in:
-        try:
-            f_g = sympify(limpar_matematica(g_in))
-            f_n = lambdify(symbols('x'), f_g, "numpy")
-            xv = np.linspace(-10, 10, 100)
-            fig = go.Figure(go.Scatter(x=xv, y=f_n(xv), line=dict(color="white")))
-            fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig)
-        except: st.error("Erro na função.")
-
-    st.divider()
-    if st.button("🗑️ Limpar Conversa"):
+    if st.button("🗑️ Limpar Feed"):
         st.session_state.feed = []
         st.rerun()
