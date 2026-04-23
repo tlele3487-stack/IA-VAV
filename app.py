@@ -1,6 +1,4 @@
-
-
-```python
+python
 import streamlit as st
 import sympy as sp
 from sympy import *
@@ -184,4 +182,3 @@ elif categoria == "Cálculo 4 - EDO e Álgebra Linear":
                     )
             except Exception as err:
                 st.error(f"Erro: {err}")
-```
