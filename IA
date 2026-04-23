@@ -1,0 +1,111 @@
+```python
+import streamlit as st
+import sympy as sp
+from sympy import *
+
+x, y, z, t, n = symbols('x y z t n')
+
+st.set_page_config(page_title="IA de Matemática", page_icon="🧮", layout="centered")
+
+st.markdown("""
+    <style>
+    body { background-color: #0e1117; color: white; }
+    .stButton>button { background-color: #1f77b4; color: white; border-radius: 8px; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.title("🧮 IA de Matemática")
+st.markdown("Resolva questões de **Matemática Básica** e **Cálculo 1 ao 4** com passo a passo.")
+
+categoria = st.selectbox("Escolha a categoria:", [
+    "Matemática Básica",
+    "Cálculo 1 - Limites e Derivadas",
+    "Cálculo 2 - Integrais",
+    "Cálculo 3 - Multivariável e Séries",
+    "Cálculo 4 - EDO e Álgebra Linear"
+])
+
+st.divider()
+
+def mostrar_resultado(passos, resultado):
+    st.markdown("### 📌 Passo a Passo")
+    for i, p in enumerate(passos, 1):
+        st.markdown(f"**Passo {i}:** {p}")
+    st.success(f"✅ Resultado: {resultado}")
+
+if categoria == "Matemática Básica":
+    op = st.selectbox("Operação:", ["Simplificar", "Resolver Equação", "Fatorar", "Expandir"])
+    expr = st.text_input("Digite a expressão (ex: x**2 - 4):")
+    if st.button("Calcular") and expr:
+        try:
+            e = sympify(expr)
+            if op == "Simplificar":
+                mostrar_resultado(
+                    [f"Expressão original: {e}", "Aplicando simplificação..."],
+                    simplify(e)
+                )
+            elif op == "Resolver Equação":
+                mostrar_resultado(
+                    [f"Equação: {e} = 0", "Isolando x..."],
+                    solve(e, x)
+                )
+            elif op == "Fatorar":
+                mostrar_resultado(
+                    [f"Expressão original: {e}", "Fatorando..."],
+                    factor(e)
+                )
+            elif op == "Expandir":
+                mostrar_resultado(
+                    [f"Expressão original: {e}", "Expandindo..."],
+                    expand(e)
+                )
+        except Exception as err:
+            st.error(f"Erro: {err}")
+
+elif categoria == "Cálculo 1 - Limites e Derivadas":
+    op = st.selectbox("Operação:", ["Limite", "Derivada 1ª ordem", "Derivada 2ª ordem"])
+    expr = st.text_input("Digite a expressão:")
+    if op == "Limite":
+        ponto = st.text_input("x se aproxima de (ex: 0, oo, 1):")
+    if st.button("Calcular") and expr:
+        try:
+            e = sympify(expr)
+            if op == "Limite":
+                p = sympify(ponto)
+                mostrar_resultado(
+                    [f"f(x) = {e}", f"Calculando lim x→{p}..."],
+                    limit(e, x, p)
+                )
+            elif op == "Derivada 1ª ordem":
+                mostrar_resultado(
+                    [f"f(x) = {e}", "Aplicando regras de derivação..."],
+                    diff(e, x)
+                )
+            elif op == "Derivada 2ª ordem":
+                d1 = diff(e, x)
+                mostrar_resultado(
+                    [f"f(x) = {e}", f"Primeira derivada: f'(x) = {d1}", "Derivando novamente..."],
+                    diff(e, x, 2)
+                )
+        except Exception as err:
+            st.error(f"Erro: {err}")
+
+elif categoria == "Cálculo 2 - Integrais":
+    op = st.selectbox("Operação:", ["Integral Indefinida", "Integral Definida"])
+    expr = st.text_input("Digite a expressão:")
+    if op == "Integral Definida":
+        a = st.text_input("Limite inferior:")
+        b = st.text_input("Limite superior:")
+    if st.button("Calcular") and expr:
+        try:
+            e = sympify(expr)
+            if op == "Integral Indefinida":
+                mostrar_resultado(
+                    [f"f(x) = {e}", "Aplicando técnicas de integração..."],
+                    str(integrate(e, x)) + " + C"
+                )
+            elif op == "Integral Definida":
+                la, lb = sympify(a), sympify(b)
+                indef = integrate(e, x)
+                mostrar_resultado(
+                    [f"f(x) = {e}", f"Primitiva F(x) = {indef}", f"Calculando F({lb}) - F({la})..."],
