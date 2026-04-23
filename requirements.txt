@@ -1,8 +1,10 @@
 streamlit
-sympy
 plotly
 numpy
 pandas
 wikipedia
+sympy
 Pillow
+duckduckgo_search
+
 
