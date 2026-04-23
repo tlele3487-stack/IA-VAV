@@ -8,9 +8,10 @@ import time
 from PIL import Image
 from datetime import datetime
 from sympy import sympify, diff, integrate, symbols, latex, lambdify, Function, dsolve, Eq
+from duckduckgo_search import DDGS # Motor de busca em tempo real
 
 # 1. CONFIGURAÇÕES DE ESTÉTICA GROK (ULTRA DARK) - IDENTIDADE RUFINO 2.0
-st.set_page_config(page_title="Rufino 2.0", layout="centered", page_icon="🧠")
+st.set_page_config(page_title="Rufino 2.0 - Global", layout="centered", page_icon="🧠")
 
 st.markdown("""
     <style>
@@ -49,6 +50,8 @@ st.markdown("""
         line-height: 1.6;
     }
     
+    .source-tag { color: #00fbff; font-size: 12px; font-weight: bold; }
+    
     /* Sidebar */
     [data-testid="stSidebar"] { background-color: #0a0a0a; border-right: 1px solid #222; }
     
@@ -68,12 +71,30 @@ def corrigir_sintaxe(texto):
     for pt, en in trads.items(): texto = texto.replace(pt, en)
     return texto
 
+def busca_global_live(query):
+    resultados = []
+    # Busca 1: Wikipedia
+    try:
+        wiki_res = wikipedia.summary(query, sentences=3)
+        resultados.append(f"**[Enciclopédia]** {wiki_res}")
+    except: pass
+    
+    # Busca 2: Web Live (DuckDuckGo)
+    try:
+        with DDGS() as ddgs:
+            ddg_results = [r for r in ddgs.text(query, max_results=3)]
+            for res in ddg_results:
+                resultados.append(f"**[Web Live]** {res['body']} \n\n*Fonte: {res['href']}*")
+    except: pass
+    
+    return "\n\n---\n\n".join(resultados) if resultados else "Nenhum dado encontrado na rede mundial."
+
 if 'historico' not in st.session_state: st.session_state.historico = []
 
 # --- MENU LATERAL (FUNÇÕES RUFINO 2.0) ---
 with st.sidebar:
     st.title("🛡️ Rufino 2.0")
-    modo = st.radio("Modo de Operação:", ["🔍 Omnisciente", "🧬 Exatas", "👁️ Vision"])
+    modo = st.radio("Modo de Operação:", ["🔍 Pesquisa Global", "🧬 Exatas", "👁️ Vision"])
     
     st.divider()
     st.subheader("⏱️ Foco Pomodoro")
@@ -92,18 +113,18 @@ with st.sidebar:
 
 # --- INTERFACE CENTRAL ---
 st.markdown("<h1 style='text-align: center; margin-top: 30px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666;'>Omnisciente • Conectado • Minimalista</p>", unsafe_allow_html=True)
 
 tab_chat, tab_ferramentas = st.tabs(["💬 Chat", "🧰 Ferramentas"])
 
 with tab_chat:
     # Barra de Pesquisa Única
-    prompt = st.text_input("", placeholder="Rufino 2.0: Pergunte qualquer coisa...", label_visibility="collapsed")
+    prompt = st.text_input("", placeholder="Rufino 2.0: Pergunte sobre qualquer assunto ou resolva equações...", label_visibility="collapsed")
     
     if st.button("Executar"):
         if prompt:
-            with st.spinner("Rufino 2.0 processando..."):
+            with st.spinner("Rufino 2.0 vasculhando a rede e processando dados..."):
                 try:
-                    # LÓGICA CONFORME O MODO
                     if modo == "🧬 Exatas":
                         x = symbols('x')
                         f = sympify(corrigir_sintaxe(prompt))
@@ -111,8 +132,8 @@ with tab_chat:
                         der = diff(f, x)
                         saida = f"Resultado: {latex(res_val)} | Derivada: {latex(der)}"
                         tipo = "math"
-                    elif modo == "🔍 Omnisciente":
-                        saida = wikipedia.summary(prompt, sentences=5)
+                    elif modo == "🔍 Pesquisa Global":
+                        saida = busca_global_live(prompt)
                         tipo = "text"
                     else:
                         saida = "Aguardando imagem na aba ferramentas para análise..."
@@ -120,7 +141,7 @@ with tab_chat:
                     
                     st.session_state.historico.append({"in": prompt, "out": saida, "type": tipo})
                 except:
-                    st.error("Erro no processamento. Rufino 2.0 recomenda verificar a escrita.")
+                    st.error("Erro no processamento. Rufino 2.0 recomenda verificar a escrita ou conexão.")
 
     # EXIBIÇÃO DO FEED (ORDEM INVERSA)
     for chat in reversed(st.session_state.historico):
