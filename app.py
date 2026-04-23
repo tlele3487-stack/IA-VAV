@@ -1,183 +1,158 @@
 import streamlit as st
-import sympy as sp
-from sympy import *
+import plotly.graph_objects as go
+import numpy as np
+import pandas as pd
+from datetime import datetime
+from sympy import (
+    sympify, diff, integrate, series, symbols, Function, 
+    dsolve, Eq, Matrix, latex, lambdify, sin, cos, tan, exp, log, pi
+)
 
-x, y, z, t, n = symbols('x y z t n')
-
-st.set_page_config(page_title="IA de Matemática", page_icon="🧮", layout="centered")
+# 1. Configurações de Estilo e Página
+st.set_page_config(page_title="MathLab Pro", layout="wide", page_icon="🚀")
 
 st.markdown("""
     <style>
-    body { background-color: #0e1117; color: white; }
-    .stButton>button { background-color: #1f77b4; color: white; border-radius: 8px; }
+    .main { background-color: #f5f7f9; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #007bff; color: white; }
+    .stExpander { border: 1px solid #007bff; border-radius: 10px; }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-st.title("🧮 IA de Matemática")
-st.markdown("Resolva questões de **Matemática Básica** e **Cálculo 1 ao 4** com passo a passo.")
+# Inicialização de Variáveis Simbólicas
+x, y, z, t = symbols('x y z t')
 
-categoria = st.selectbox("Escolha a categoria:", [
-    "Matemática Básica",
-    "Cálculo 1 - Limites e Derivadas",
-    "Cálculo 2 - Integrais",
-    "Cálculo 3 - Multivariável e Séries",
-    "Cálculo 4 - EDO e Álgebra Linear"
-])
+if 'historico' not in st.session_state:
+    st.session_state.historico = []
 
+# 2. Funções de Suporte
+def registrar_historico(categoria, expressao, resultado):
+    st.session_state.historico.append({
+        "Horário": datetime.now().strftime("%H:%M:%S"),
+        "Módulo": categoria,
+        "Entrada": str(expressao),
+        "Resultado": str(resultado)
+    })
+
+def exibir_math(obj_sympy, passos=None):
+    st.success("Cálculo Concluído!")
+    st.latex(latex(obj_sympy))
+    if passos and st.sidebar.checkbox("Mostrar Explicação", value=True):
+        for p in passos:
+            st.info(f"💡 {p}")
+
+# 3. Sidebar de Controle
+st.sidebar.title("🚀 MathLab Pro")
+modo = st.sidebar.radio("Nível de Cálculo:", 
+    ["Análise & Gráficos", "Cálculo 1 & 2", "Cálculo Multivariável", "EDO & Álgebra Linear"])
+
+st.title("🧮 MathLab: Sistema de Computação Simbólica")
 st.divider()
 
-def mostrar_resultado(passos, resultado):
-    st.markdown("### 📌 Passo a Passo")
-    for i, p in enumerate(passos, 1):
-        st.markdown(f"**Passo {i}:** {p}")
-    st.success(f"✅ Resultado: {resultado}")
+# --- MÓDULO 1: ANÁLISE & GRÁFICOS ---
+if modo == "Análise & Gráficos":
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.header("Função 2D")
+        func_input = st.text_input("f(x) =", "sin(x) * exp(-x/5)")
+        range_x = st.slider("Intervalo de x", -50, 50, (-10, 10))
+        
+        if st.button("Gerar Visualização"):
+            try:
+                f_sym = sympify(func_input)
+                f_num = lambdify(x, f_sym, "numpy")
+                x_vals = np.linspace(range_x[0], range_x[1], 500)
+                y_vals = f_num(x_vals)
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=x_vals, y=y_vals, name="f(x)", line=dict(color='#007bff', width=3)))
+                fig.update_layout(template="plotly_white", title=f"Gráfico de {func_input}")
+                
+                with col2:
+                    st.plotly_chart(fig, use_container_width=True)
+                registrar_historico("Gráficos", func_input, "Gráfico Gerado")
+            except Exception as e: st.error(f"Erro na função: {e}")
 
-if categoria == "Matemática Básica":
-    op = st.selectbox("Operação:", ["Simplificar", "Resolver Equação", "Fatorar", "Expandir"])
-    expr = st.text_input("Digite a expressão (ex: x**2 - 4):")
-    if st.button("Calcular") and expr:
-        try:
-            e = sympify(expr)
-            if op == "Simplificar":
-                mostrar_resultado(
-                    [f"Expressão original: {e}", "Aplicando simplificação..."],
-                    simplify(e)
-                )
-            elif op == "Resolver Equação":
-                mostrar_resultado(
-                    [f"Equação: {e} = 0", "Isolando x..."],
-                    solve(e, x)
-                )
-            elif op == "Fatorar":
-                mostrar_resultado(
-                    [f"Expressão original: {e}", "Fatorando..."],
-                    factor(e)
-                )
-            elif op == "Expandir":
-                mostrar_resultado(
-                    [f"Expressão original: {e}", "Expandindo..."],
-                    expand(e)
-                )
-        except Exception as err:
-            st.error(f"Erro: {err}")
-
-elif categoria == "Cálculo 1 - Limites e Derivadas":
-    op = st.selectbox("Operação:", ["Limite", "Derivada 1ª ordem", "Derivada 2ª ordem"])
-    expr = st.text_input("Digite a expressão:")
-    if op == "Limite":
-        ponto = st.text_input("x se aproxima de (ex: 0, oo, 1):")
-    if st.button("Calcular") and expr:
-        try:
-            e = sympify(expr)
-            if op == "Limite":
-                p = sympify(ponto)
-                mostrar_resultado(
-                    [f"f(x) = {e}", f"Calculando lim x→{p}..."],
-                    limit(e, x, p)
-                )
-            elif op == "Derivada 1ª ordem":
-                mostrar_resultado(
-                    [f"f(x) = {e}", "Aplicando regras de derivação..."],
-                    diff(e, x)
-                )
-            elif op == "Derivada 2ª ordem":
-                d1 = diff(e, x)
-                mostrar_resultado(
-                    [f"f(x) = {e}", f"Primeira derivada: f'(x) = {d1}", "Derivando novamente..."],
-                    diff(e, x, 2)
-                )
-        except Exception as err:
-            st.error(f"Erro: {err}")
-
-elif categoria == "Cálculo 2 - Integrais":
-    op = st.selectbox("Operação:", ["Integral Indefinida", "Integral Definida"])
-    expr = st.text_input("Digite a expressão:")
+# --- MÓDULO 2: CÁLCULO 1 & 2 ---
+elif modo == "Cálculo 1 & 2":
+    op = st.selectbox("Operação:", ["Derivada", "Integral Indefinida", "Integral Definida", "Limite"])
+    expr = st.text_input("Expressão f(x):", "x**2 * ln(x)")
+    
+    col_a, col_b = st.columns(2)
     if op == "Integral Definida":
-        a = st.text_input("Limite inferior:")
-        b = st.text_input("Limite superior:")
-    if st.button("Calcular") and expr:
+        a = col_a.text_input("De (a):", "0")
+        b = col_b.text_input("Até (b):", "1")
+    elif op == "Limite":
+        a = col_a.text_input("x tende a:", "0")
+
+    if st.button("Executar Cálculo"):
         try:
-            e = sympify(expr)
-            if op == "Integral Indefinida":
-                mostrar_resultado(
-                    [f"f(x) = {e}", "Aplicando técnicas de integração..."],
-                    str(integrate(e, x)) + " + C"
-                )
+            f = sympify(expr)
+            if op == "Derivada":
+                res = diff(f, x)
+                exibir_math(res, [f"Derivando {f} em relação a x", "Aplicando regras de derivação (produto/cadeia)."])
+            elif op == "Integral Indefinida":
+                res = integrate(f, x)
+                exibir_math(res, [f"Calculando a primitiva de {f}", "Resultado omitindo a constante C."])
             elif op == "Integral Definida":
-                la, lb = sympify(a), sympify(b)
-                indef = integrate(e, x)
-                mostrar_resultado(
-                    [f"f(x) = {e}", f"Primitiva F(x) = {indef}", f"Calculando F({lb}) - F({la})..."],integrate(e, (x, la, lb))
-                )
-        except Exception as err:
-            st.error(f"Erro: {err}")
+                res = integrate(f, (x, sympify(a), sympify(b)))
+                exibir_math(res, [f"Área sob a curva de {a} até {b}"])
+            
+            registrar_historico(op, expr, res)
+        except Exception as e: st.error(e)
 
-elif categoria == "Cálculo 3 - Multivariável e Séries":
-    op = st.selectbox("Operação:", ["Série de Taylor", "Derivada Parcial ∂/∂x", "Derivada Parcial ∂/∂y", "Gradiente"])
-    expr = st.text_input("Digite a expressão:")
-    if op == "Série de Taylor":
-        ordem = st.number_input("Ordem da série:", min_value=1, max_value=20, value=5)
-    if st.button("Calcular") and expr:
-        try:
-            e = sympify(expr)
-            if op == "Série de Taylor":
-                mostrar_resultado(
-                    [f"f(x) = {e}", f"Expandindo em torno de x=0 até ordem {int(ordem)}..."],
-                    series(e, x, 0, int(ordem))
-                )
-            elif op == "Derivada Parcial ∂/∂x":
-                mostrar_resultado(
-                    [f"f(x,y) = {e}", "Derivando em relação a x (y constante)..."],
-                    diff(e, x)
-                )
-            elif op == "Derivada Parcial ∂/∂y":
-                mostrar_resultado(
-                    [f"f(x,y) = {e}", "Derivando em relação a y (x constante)..."],
-                    diff(e, y)
-                )
-            elif op == "Gradiente":
-                dx, dy = diff(e, x), diff(e, y)
-                mostrar_resultado(
-                    [f"f(x,y) = {e}", f"∂f/∂x = {dx}", f"∂f/∂y = {dy}"],
-                    f"∇f = [{dx}, {dy}]"
-                )
-        except Exception as err:
-            st.error(f"Erro: {err}")
+# --- MÓDULO 3: CÁLCULO MULTIVARIÁVEL (Visual 3D) ---
+elif modo == "Cálculo Multivariável":
+    st.header("Campos Escalares e Vetoriais")
+    expr = st.text_input("Função f(x, y):", "sin(x) * cos(y)")
+    op = st.selectbox("Operação:", ["Gradiente", "Laplaciano", "Gráfico de Superfície 3D"])
+    
+    if st.button("Calcular / Visualizar"):
+        f = sympify(expr)
+        if op == "Gráfico de Superfície 3D":
+            f_num = lambdify((x, y), f, "numpy")
+            v = np.linspace(-5, 5, 50)
+            X, Y = np.meshgrid(v, v)
+            Z = f_num(X, Y)
+            fig = go.Figure(data=[go.Surface(z=Z, x=X, y=Y, colorscale='Viridis')])
+            st.plotly_chart(fig)
+        else:
+            res = [diff(f, x), diff(f, y)] if op == "Gradiente" else diff(f, x, 2) + diff(f, y, 2)
+            exibir_math(res)
+            registrar_historico(op, expr, res)
 
-elif categoria == "Cálculo 4 - EDO e Álgebra Linear":
-    op = st.selectbox("Operação:", ["EDO", "Determinante de Matriz", "Autovalores"])
-    if op == "EDO":
-        expr = st.text_input("Digite a EDO (ex: f(x).diff(x) - f(x)):")
-        if st.button("Calcular") and expr:
-            try:
-                f = Function('f')
-                e = sympify(expr, locals={'f': f, 'x': x})
-                mostrar_resultado(
-                    [f"EDO: {e} = 0", "Aplicando método de resolução..."],
-                    dsolve(Eq(e, 0), f(x))
-                )
-            except Exception as err:
-                st.error(f"Erro: {err}")
+# --- MÓDULO 4: EDO & ÁLGEBRA ---
+elif modo == "EDO & Álgebra Linear":
+    aba1, aba2 = st.tabs(["Equações Diferenciais", "Álgebra Linear"])
+    
+    with aba1:
+        edo_input = st.text_input("EDO (use f(x)):", "f(x).diff(x) + 2*f(x) - exp(x)")
+        if st.button("Resolver EDO"):
+            f_func = Function('f')
+            sol = dsolve(Eq(sympify(edo_input, locals={'f': f_func}), 0), f_func(x))
+            exibir_math(sol)
+            registrar_historico("EDO", edo_input, sol)
+
+    with aba2:
+        n = st.number_input("Dimensão da Matriz", 2, 5, 2)
+        st.write("Elementos (separe por espaço):")
+        grid = [st.text_input(f"Linha {i+1}", "1 0") for i in range(n)]
+        if st.button("Processar Matriz"):
+            m = Matrix([[sympify(v) for v in r.split()] for r in grid])
+            col1, col2 = st.columns(2)
+            col1.write("Determinante:")
+            col1.latex(latex(m.det()))
+            col2.write("Inversa:")
+            col2.latex(latex(m.inv() if m.det() != 0 else "Não inversível"))
+            registrar_historico("Matriz", str(m), f"Det: {m.det()}")
+
+# --- RODAPÉ: HISTÓRICO ---
+st.divider()
+with st.expander("📂 Histórico da Sessão & Exportação"):
+    if st.session_state.historico:
+        df = pd.DataFrame(st.session_state.historico)
+        st.dataframe(df, use_container_width=True)
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button("📥 Baixar Relatório CSV", csv, "calculos.csv", "text/csv")
     else:
-        n_mat = st.number_input("Tamanho da matriz (ex: 2 para 2x2):", min_value=2, max_value=5, value=2)
-        st.markdown("Digite os elementos (separados por espaço):")
-        linhas = []
-        for i in range(int(n_mat)):
-            linha = st.text_input(f"Linha {i+1}:", key=f"linha_{i}")
-            linhas.append(linha)
-        if st.button("Calcular"):
-            try:
-                mat = [[sympify(v) for v in l.split()] for l in linhas]
-                M = Matrix(mat)
-                if op == "Determinante de Matriz":
-                    mostrar_resultado(
-                        [f"Matriz: {M}", "Calculando determinante..."],
-                        M.det()
-                    )
-                elif op == "Autovalores":
-                    mostrar_resultado(
-                        [f"Matriz: {M}", "Calculando polinômio característico...", "Resolvendo det(A - λI) = 0..."],
-                        M.eigenvals()
-                    )
-            except Exception as err:
-                st.error(f"Erro: {err}")
+        st.write("Nenhum dado registrado.")
