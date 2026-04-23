@@ -1,0 +1,75 @@
+integrate(e, (x, la, lb))
+                )
+        except Exception as err:
+            st.error(f"Erro: {err}")
+
+elif categoria == "Cálculo 3 - Multivariável e Séries":
+    op = st.selectbox("Operação:", ["Série de Taylor", "Derivada Parcial ∂/∂x", "Derivada Parcial ∂/∂y", "Gradiente"])
+    expr = st.text_input("Digite a expressão:")
+    if op == "Série de Taylor":
+        ordem = st.number_input("Ordem da série:", min_value=1, max_value=20, value=5)
+    if st.button("Calcular") and expr:
+        try:
+            e = sympify(expr)
+            if op == "Série de Taylor":
+                mostrar_resultado(
+                    [f"f(x) = {e}", f"Expandindo em torno de x=0 até ordem {int(ordem)}..."],
+                    series(e, x, 0, int(ordem))
+                )
+            elif op == "Derivada Parcial ∂/∂x":
+                mostrar_resultado(
+                    [f"f(x,y) = {e}", "Derivando em relação a x (y constante)..."],
+                    diff(e, x)
+                )
+            elif op == "Derivada Parcial ∂/∂y":
+                mostrar_resultado(
+                    [f"f(x,y) = {e}", "Derivando em relação a y (x constante)..."],
+                    diff(e, y)
+                )
+            elif op == "Gradiente":
+                dx, dy = diff(e, x), diff(e, y)
+                mostrar_resultado(
+                    [f"f(x,y) = {e}", f"∂f/∂x = {dx}", f"∂f/∂y = {dy}"],
+                    f"∇f = [{dx}, {dy}]"
+                )
+        except Exception as err:
+            st.error(f"Erro: {err}")
+
+elif categoria == "Cálculo 4 - EDO e Álgebra Linear":
+    op = st.selectbox("Operação:", ["EDO", "Determinante de Matriz", "Autovalores"])
+    if op == "EDO":
+        expr = st.text_input("Digite a EDO (ex: f(x).diff(x) - f(x)):")
+        if st.button("Calcular") and expr:
+            try:
+                f = Function('f')
+                e = sympify(expr, locals={'f': f, 'x': x})
+                mostrar_resultado(
+                    [f"EDO: {e} = 0", "Aplicando método de resolução..."],
+                    dsolve(Eq(e, 0), f(x))
+                )
+            except Exception as err:
+                st.error(f"Erro: {err}")
+    else:
+        n_mat = st.number_input("Tamanho da matriz (ex: 2 para 2x2):", min_value=2, max_value=5, value=2)
+        st.markdown("Digite os elementos (separados por espaço):")
+        linhas = []
+        for i in range(int(n_mat)):
+            linha = st.text_input(f"Linha {i+1}:", key=f"linha_{i}")
+            linhas.append(linha)
+        if st.button("Calcular"):
+            try:
+                mat = [[sympify(v) for v in l.split()] for l in linhas]
+                M = Matrix(mat)
+                if op == "Determinante de Matriz":
+                    mostrar_resultado(
+                        [f"Matriz: {M}", "Calculando determinante..."],
+                        M.det()
+                    )
+                elif op == "Autovalores":
+                    mostrar_resultado(
+                        [f"Matriz: {M}", "Calculando polinômio característico...", "Resolvendo det(A - λI) = 0..."],
+                        M.eigenvals()
+                    )
+            except Exception as err:
+                st.error(f"Erro: {err}")
+```
