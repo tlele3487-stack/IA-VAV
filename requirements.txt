@@ -3,3 +3,6 @@ sympy
 plotly
 numpy
 pandas
+wikipedia
+Pillow
+
