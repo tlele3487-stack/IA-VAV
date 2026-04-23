@@ -1,16 +1,14 @@
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
-import pandas as pd
 import wikipedia
 import re
 import time
 from PIL import Image
-from datetime import datetime
-from sympy import sympify, diff, integrate, symbols, latex, lambdify, Function, dsolve, Eq
+from sympy import sympify, diff, integrate, symbols, latex, lambdify
 from duckduckgo_search import DDGS
 
-# 1. IDENTIDADE VISUAL E CONFIGURAÇÃO (STYLE GROK DARK)
+# 1. ESTÉTICA GROK (ULTRA-DARK & FEED CONTÍNUO)
 st.set_page_config(page_title="Rufino 2.0", layout="centered", page_icon="🧠")
 
 st.markdown("""
@@ -18,9 +16,9 @@ st.markdown("""
     /* Fundo Total Black */
     .stApp { background-color: #000000; color: #ffffff; }
     
-    /* Barra de Busca Centralizada */
+    /* Barra de Busca Estilo Grok */
     .stTextInput input {
-        background-color: #111111 !important;
+        background-color: #0f0f0f !important;
         color: #ffffff !important;
         border: 1px solid #333 !important;
         border-radius: 14px !important;
@@ -28,151 +26,137 @@ st.markdown("""
         font-size: 18px !important;
     }
     
-    /* Botões Arredondados */
+    /* Botão de Envio Minimalista */
     .stButton>button {
         background-color: #ffffff !important;
         color: #000000 !important;
         border-radius: 50px !important;
         font-weight: bold !important;
         height: 3.5em;
-        transition: 0.3s;
+        border: none !important;
+        width: 100%;
     }
-    .stButton>button:hover { background-color: #cccccc !important; }
-    
-    /* Box de Respostas Profissional */
+
+    /* Estilo das Perguntas no Feed */
+    .user-query {
+        color: #888;
+        font-weight: bold;
+        margin-top: 40px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Box de Resposta Estruturada (Feed) */
     .result-box {
-        background-color: #111111;
-        padding: 25px;
+        background-color: #0f0f0f;
+        padding: 30px;
         border-radius: 15px;
         border: 1px solid #222;
-        margin-top: 20px;
-        line-height: 1.6;
+        margin-top: 10px;
+        line-height: 1.8;
         color: #e0e0e0;
+        border-left: 4px solid #ffffff;
     }
     
-    /* Estilo de Sidebar e Tabs */
-    [data-testid="stSidebar"] { background-color: #050505; border-right: 1px solid #222; }
-    .stTabs [data-baseweb="tab-list"] { background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { color: #888; font-weight: bold; }
-    .stTabs [data-baseweb="tab--active"] { color: white !important; border-bottom-color: white !important; }
+    .section-title { color: #00fbff; font-weight: bold; font-size: 19px; margin-top: 15px; }
+    .source-tag { color: #555; font-size: 12px; font-style: italic; }
+
+    /* Esconder elementos padrão */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MOTORES DE INTELIGÊNCIA (PORTUGUÊS PRIORITÁRIO)
+# 2. MOTORES DE INTELIGÊNCIA RUFINO (100% PORTUGUÊS)
 wikipedia.set_lang("pt")
 
 def limpar_matematica(texto):
-    # Converte sintaxe comum (2x -> 2*x) e (sen -> sin)
     texto = re.sub(r'(\d)([a-zA-Z\(])', r'\1*\2', texto)
     trads = {'sen': 'sin', 'tg': 'tan', '^': '**', 'ln': 'log'}
     for pt, en in trads.items(): texto = texto.replace(pt, en)
     return texto
 
-def busca_rufino_global(query):
-    resultados = []
-    # 1. Busca Enciclopédia (Wikipedia)
+def motor_explica_tudo(query):
+    # Lógica Matemática
     try:
-        wiki_res = wikipedia.summary(query, sentences=4)
-        resultados.append(f"📖 **Enciclopédia:** {wiki_res}")
+        if any(c in query for c in '+-*/^') or 'x' in query:
+            x_s = symbols('x')
+            f = sympify(limpar_matematica(query))
+            return f"""
+            <div class='section-title'>🧬 Análise Matemática</div>
+            O Rufino 2.0 identificou uma operação simbólica:
+            <br><br>
+            **Resultado:** $${latex(f)}$$
+            **Derivada:** $${latex(diff(f, x_s))}$$
+            """
     except: pass
-    
-    # 2. Busca Web Live (DuckDuckGo focado em PT-BR)
+
+    # Lógica de Busca Global (Sem Filtros)
     try:
+        resumo = wikipedia.summary(query, sentences=8)
+        explicacao = f"<div class='section-title'>📚 Explicação Completa</div>{resumo}<br><br><div class='section-title'>🌐 Pesquisa Web Live</div>"
+        
         with DDGS() as ddgs:
-            ddg_res = [r for r in ddgs.text(query, region='br-pt', max_results=3)]
-            for r in ddg_res:
-                resultados.append(f"🌐 **Web:** {r['body']}\n\n*Fonte: {r['href']}*")
-    except: pass
-    
-    return "\n\n---\n\n".join(resultados) if resultados else "Rufino não encontrou informações. Tente outro termo."
+            # Busca filtrada para região Brasil/Portugal
+            links = [r for r in ddgs.text(query, region='br-pt', max_results=3)]
+            for r in links:
+                explicacao += f"• {r['body']}<br><span class='source-tag'>Fonte: {r['href']}</span><br><br>"
+        return explicacao
+    except:
+        return "Rufino 2.0 não encontrou dados suficientes na rede. Tente reformular a pergunta."
 
-# Inicialização de Histórico
-if 'chat_log' not in st.session_state: st.session_state.chat_log = []
-
-# --- MENU LATERAL (PRODUTIVIDADE) ---
-with st.sidebar:
-    st.title("🛡️ Rufino 2.0")
-    st.caption("Inteligência Omnisciente em Português")
-    
-    modo = st.radio("Selecione o Modo:", ["🔍 Busca Global", "🧬 Exatas", "👁️ Vision"])
-    
-    st.divider()
-    st.subheader("⏱️ Foco Pomodoro")
-    if st.button("Iniciar 25 min"):
-        with st.empty():
-            for t in range(25*60, 0, -1):
-                m, s = divmod(t, 60)
-                st.metric("Foco Rufino", f"{m:02d}:{s:02d}")
-                time.sleep(1)
-            st.balloons()
-    
-    st.divider()
-    if st.button("🗑️ Limpar Tudo"):
-        st.session_state.chat_log = []
-        st.rerun()
+# 3. GESTÃO DE HISTÓRICO (FEED ESTILO GROK)
+if 'feed' not in st.session_state:
+    st.session_state.feed = []
 
 # --- INTERFACE CENTRAL ---
-st.markdown("<h1 style='text-align: center; margin-top: 20px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-top: 30px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #555;'>Omnisciente • Sem Filtros • Feed Contínuo</p>", unsafe_allow_html=True)
 
-tab_conversa, tab_ferramentas = st.tabs(["💬 Conversa", "🧰 Ferramentas"])
-
-with tab_conversa:
-    # Barra Estilo Grok
-    prompt = st.text_input("", placeholder="Rufino 2.0: Pergunte o que quiser...", label_visibility="collapsed")
-    
+# Container de Entrada Fixo no Fluxo
+with st.container():
+    pergunta_usuario = st.text_input("", placeholder="Rufino 2.0: Pergunte absolutamente qualquer coisa...", key="input_main", label_visibility="collapsed")
     if st.button("Consultar Rufino"):
-        if prompt:
-            with st.spinner("Rufino 2.0 vasculhando fontes..."):
-                try:
-                    if modo == "🧬 Exatas":
-                        x_sym = symbols('x')
-                        f = sympify(limpar_matematica(prompt))
-                        res_val = f.simplify()
-                        der = diff(f, x_sym)
-                        saida = f"**Resultado:** {latex(res_val)}  \n**Derivada:** {latex(der)}"
-                        tipo = "math"
-                    elif modo == "🔍 Busca Global":
-                        saida = busca_rufino_global(prompt)
-                        tipo = "text"
-                    else:
-                        saida = "Por favor, suba uma imagem na aba 'Ferramentas' para análise."
-                        tipo = "text"
-                    
-                    st.session_state.chat_log.append({"in": prompt, "out": saida, "type": tipo})
-                except:
-                    st.error("Erro no processamento. Verifique a pergunta ou comando.")
+        if pergunta_usuario:
+            with st.spinner(""):
+                resposta = motor_explica_tudo(pergunta_usuario)
+                # Insere no início para o Feed mostrar o mais novo primeiro
+                st.session_state.feed.insert(0, {"q": pergunta_usuario, "a": resposta})
 
-    # Feed de Respostas
-    for chat in reversed(st.session_state.chat_log):
-        st.markdown(f"**❯ {chat['in']}**")
-        st.markdown(f"<div class='result-box'>{chat['out']}</div>", unsafe_allow_html=True)
-        if chat['type'] == "math":
-            st.latex(chat['out'].replace('**Resultado:**', '').replace('**Derivada:**', ''))
-        st.markdown("<br>", unsafe_allow_html=True)
+st.divider()
 
-with tab_ferramentas:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("👁️ Vision")
-        foto = st.file_uploader("Enviar foto", type=["jpg", "png", "jpeg"])
-        if foto:
-            st.image(Image.open(foto), use_container_width=True)
-            st.info("Imagem no sistema. Rufino 2.0 pronto para análise.")
+# --- EXIBIÇÃO DO FEED (ORDEM DE CHAT) ---
+for item in st.session_state.feed:
+    st.markdown(f"<div class='user-query'>❯ {item['q']}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='result-box'>{item['a']}</div>", unsafe_allow_html=True)
 
-    with col2:
-        st.subheader("📓 Notas")
-        notas = st.text_area("Rascunho de estudos:", height=150)
-        st.download_button("Baixar Notas (TXT)", notas, "notas_rufino.txt")
+# --- SIDEBAR (FERRAMENTAS AUXILIARES) ---
+with st.sidebar:
+    st.title("🛡️ Rufino 2.0")
+    st.caption("Versão Final Omnisciente")
+    
+    st.divider()
+    st.subheader("👁️ Vision")
+    foto = st.file_uploader("Análise de Imagem", type=["jpg", "png", "jpeg"])
+    if foto:
+        st.image(Image.open(foto), use_container_width=True)
+        st.info("Imagem carregada no sistema Rufino.")
 
     st.divider()
-    st.subheader("📊 Gráfico Rápido")
-    g_in = st.text_input("Função (ex: x**2):")
+    st.subheader("📊 Gráficos")
+    g_in = st.text_input("Função (ex: sin(x)):")
     if g_in:
         try:
             f_g = sympify(limpar_matematica(g_in))
             f_n = lambdify(symbols('x'), f_g, "numpy")
             xv = np.linspace(-10, 10, 100)
-            fig = go.Figure(go.Scatter(x=xv, y=f_n(xv), line=dict(color="#00fbff")))
+            fig = go.Figure(go.Scatter(x=xv, y=f_n(xv), line=dict(color="white")))
             fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig)
-        except: st.error("Erro no gráfico.")
+        except: st.error("Erro na função.")
+
+    st.divider()
+    if st.button("🗑️ Limpar Conversa"):
+        st.session_state.feed = []
+        st.rerun()
