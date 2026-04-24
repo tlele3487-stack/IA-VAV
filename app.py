@@ -3,165 +3,128 @@ import plotly.graph_objects as go
 import numpy as np
 import wikipedia
 import re
-import time
 from PIL import Image
 from sympy import sympify, diff, symbols, latex, lambdify
 from duckduckgo_search import DDGS
+from datetime import datetime
 
-# 1. ESTÉTICA GROK (ULTRA-DARK & FEED CONTÍNUO)
+# 1. ESTÉTICA GROK (ULTRA-DARK & FEED)
 st.set_page_config(page_title="Rufino 2.0", layout="centered", page_icon="🧠")
 
 st.markdown("""
     <style>
-    /* Design Fundo Total Black */
-    .stApp { background-color: #000000; color: #ffffff; }
+    .stApp { background-color: #000000; color: #e5e7eb; }
     
-    /* Barra de Busca Estilo Grok */
+    /* Feed de Mensagens */
+    .chat-row { margin-bottom: 35px; animation: fadeIn 0.4s ease-out; }
+    .user-tag { color: #666; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .rufino-tag { color: #ffffff; font-weight: bold; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .message-text { font-size: 17px; line-height: 1.7; margin-top: 5px; color: #d1d5db; }
+    
+    /* Input Estilo Grok */
     .stTextInput input {
         background-color: #0f0f0f !important;
         color: #ffffff !important;
         border: 1px solid #333 !important;
-        border-radius: 14px !important;
-        padding: 20px !important;
-        font-size: 18px !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
     }
     
-    /* Botão de Envio Minimalista */
-    .stButton>button {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border-radius: 50px !important;
-        font-weight: bold !important;
-        height: 3.5em;
-        border: none !important;
-        width: 100%;
-    }
-
-    /* Estilo das Perguntas no Feed */
-    .user-query {
-        color: #666;
-        font-weight: bold;
-        margin-top: 45px;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-
-    /* Box de Resposta do Rufino (Estilo Feed do Grok) */
-    .result-box {
-        background-color: #0f0f0f;
-        padding: 30px;
-        border-radius: 15px;
-        border: 1px solid #222;
-        margin-top: 10px;
-        line-height: 1.8;
-        color: #e0e0e0;
-        border-left: 4px solid #00fbff; /* Destaque Neon */
-    }
-    
-    .section-title { color: #00fbff; font-weight: bold; font-size: 19px; margin-top: 10px; }
-    .source-tag { color: #444; font-size: 11px; font-style: italic; }
-
-    /* Esconder elementos padrão do Streamlit */
+    /* Esconder UI Padrão */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. MOTOR DE INTELIGÊNCIA RUFINO (BUSCA GLOBAL MULTIFONTES)
+# 2. MOTOR DE INTELIGÊNCIA RUFINO 2.0 (PORTUGUÊS)
 wikipedia.set_lang("pt")
 
-def motor_rufino_global(query):
-    query_limpa = query.strip().lower()
-    explicacao_final = ""
+def motor_rufino_universal(query):
+    query_clean = query.strip().lower()
+    respostas = []
 
-    # --- CAMADA 1: MATEMÁTICA ---
+    # FERRAMENTA: EXATAS (SYMPY)
     try:
-        if any(c in query_limpa for c in '0123456789+-*/^'):
-            # Corrige 2x para 2*x e ^ para **
-            q_math = re.sub(r'(\d)([a-z\(])', r'\1*\2', query_limpa).replace('^', '**')
+        if any(c in query_clean for c in '0123456789+-*/^'):
+            q_math = re.sub(r'(\d)([a-z\(])', r'\1*\2', query_clean).replace('^', '**')
             res = sympify(q_math)
-            explicacao_final = f"<div class='section-title'>🧬 Cálculo</div>Resultado: $${latex(res)}$$<br><br>"
+            respostas.append(f"🧬 **PROCESSO MATEMÁTICO:**\nResultado: $${latex(res)}$$\nDerivada: $${latex(diff(res, symbols('x')))}$$")
     except: pass
 
-    # --- CAMADA 2: BUSCA WEB LIVE (PESQUISA EM TODA A REDE) ---
+    # FERRAMENTA: BUSCA GLOBAL LIVE (DUCKDUCKGO)
     try:
         with DDGS() as ddgs:
-            # region 'br-pt' para priorizar resultados em português do Brasil
-            search_results = [r for r in ddgs.text(query_limpa, region='br-pt', max_results=4)]
-            if search_results:
-                explicacao_final += "<div class='section-title'>🌐 Pesquisa Web em Tempo Real</div>"
-                for r in search_results:
-                    explicacao_final += f"• {r['body']}<br><span class='source-tag'>Fonte: {r['href']}</span><br><br>"
+            search_data = [r for r in ddgs.text(query_clean, region='br-pt', max_results=3)]
+            if search_data:
+                web_text = "🌐 **PESQUISA WEB (TEMPO REAL):**\n"
+                for r in search_data:
+                    web_text += f"• {r['body']} \n*(Fonte: {r['href']})*\n"
+                respostas.append(web_text)
     except: pass
 
-    # --- CAMADA 3: WIKIPEDIA (BASE ESTRUTURADA COM CORREÇÃO ORTOGRÁFICA) ---
+    # FERRAMENTA: CONHECIMENTO ESTRUTURADO (WIKIPEDIA COM CORREÇÃO)
     try:
-        # wikipedia.search corrige erros como "catolika" para "católica"
-        sugestoes = wikipedia.search(query_limpa)
+        sugestoes = wikipedia.search(query_clean)
         if sugestoes:
-            wiki_res = wikipedia.summary(sugestoes[0], sentences=5)
-            explicacao_final += f"<div class='section-title'>📚 Base de Conhecimento</div>{wiki_res}"
+            resumo = wikipedia.summary(sugestoes[0], sentences=5)
+            respostas.append(f"📚 **BASE ENCICLOPÉDICA:**\n{resumo}")
     except: pass
 
-    return explicacao_final if explicacao_final else "Rufino 2.0 não encontrou dados suficientes. Tente ser mais específico."
+    return "\n\n---\n\n".join(respostas) if respostas else "Rufino 2.0 não localizou dados. Tente simplificar a pergunta."
 
-# 3. GESTÃO DE HISTÓRICO (O SEGREDO DO FEED CONTÍNUO)
-if 'feed' not in st.session_state:
-    st.session_state.feed = []
+# 3. GESTÃO DO FEED (HISTÓRICO)
+if 'history' not in st.session_state:
+    st.session_state.history = []
 
 # --- INTERFACE CENTRAL ---
-st.markdown("<h1 style='text-align: center; margin-top: 30px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+if not st.session_state.history:
+    st.markdown("<h1 style='text-align: center; margin-top: 100px; font-size: 55px; letter-spacing: -2px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #444; font-size: 18px;'>Omnisciente • Sem Filtros • Vision • Live Web</p>", unsafe_allow_html=True)
 
-with st.container():
-    # Barra de pesquisa única que limpa após o envio
-    prompt = st.text_input("", placeholder="Pesquise notícias, ciência, resolva contas ou pergunte qualquer coisa...", key="input_usuario", label_visibility="collapsed")
-    
-    col1, col2 = st.columns([4,1])
-    if col1.button("Consultar Mundo"):
-        if prompt:
-            with st.spinner("Rufino 2.0 vasculhando a rede..."):
-                resposta = motor_rufino_global(prompt)
-                # Insere no topo da lista para o Feed mostrar o mais novo primeiro
-                st.session_state.feed.insert(0, {"q": prompt, "a": resposta})
-                # Força a atualização para mostrar o novo item
-                st.rerun()
+# Exibição do Feed
+for chat in st.session_state.history:
+    st.markdown(f"<div class='chat-row'><div class='user-tag'>Você</div><div class='message-text'>{chat['q']}</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='chat-row'><div class='rufino-tag'>Rufino 2.0</div><div class='message-text'>{chat['a']}</div></div>", unsafe_allow_html=True)
 
-st.divider()
+# FERRAMENTA: INPUT E FORMULÁRIO (RODAPÉ)
+with st.form(key='grok_input', clear_on_submit=True):
+    prompt = st.text_input("", placeholder="Rufino 2.0: Pergunte sobre qualquer assunto...", label_visibility="collapsed")
+    enviar = st.form_submit_button("Consultar")
 
-# --- EXIBIÇÃO DO FEED CONTÍNUO ---
-# Este loop percorre a memória da sessão e desenha todas as conversas anteriores
-for item in st.session_state.feed:
-    st.markdown(f"<div class='user-query'>❯ {item['q']}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='result-box'>{item['a']}</div>", unsafe_allow_html=True)
+if enviar and prompt:
+    with st.spinner(""):
+        resposta = motor_rufino_universal(prompt)
+        st.session_state.history.append({"q": prompt, "a": resposta})
+    st.rerun()
 
-# --- SIDEBAR (FERRAMENTAS) ---
+# --- SIDEBAR: FERRAMENTAS EXTRA (VISION E GRÁFICOS) ---
 with st.sidebar:
-    st.title("🛡️ Rufino 2.0")
-    st.caption("A IA que conecta você a toda a rede mundial.")
+    st.title("⚙️ Rufino 2.0")
     
     st.divider()
     st.subheader("👁️ Vision")
-    foto = st.file_uploader("Upload de imagem para análise", type=["jpg", "png", "jpeg"])
+    foto = st.file_uploader("Upload de Imagem para Análise", type=['png', 'jpg', 'jpeg'])
     if foto:
         st.image(Image.open(foto), use_container_width=True)
-    
+        st.info("Imagem no sistema. Rufino 2.0 pronto para análise visual.")
+
     st.divider()
-    st.subheader("📊 Gráficos")
+    st.subheader("📊 Gráficos Express")
     g_in = st.text_input("Função (ex: x**2):")
     if g_in:
         try:
             f_g = sympify(g_in.replace('^', '**'))
             f_n = lambdify(symbols('x'), f_g, "numpy")
             xv = np.linspace(-10, 10, 100)
-            fig = go.Figure(go.Scatter(x=xv, y=f_n(xv), line=dict(color="#00fbff")))
+            fig = go.Figure(go.Scatter(x=xv, y=f_n(xv), line=dict(color="white")))
             fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig)
+            st.plotly_chart(fig, use_container_width=True)
         except: st.error("Erro na função.")
 
     st.divider()
-    # Botão para limpar o feed quando quiser começar do zero
-    if st.button("🗑️ Limpar Feed"):
-        st.session_state.feed = []
+    if st.button("Limpar Conversa"):
+        st.session_state.history = []
         st.rerun()
