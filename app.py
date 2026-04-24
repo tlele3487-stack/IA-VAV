@@ -3,102 +3,157 @@ import plotly.graph_objects as go
 import numpy as np
 import wikipedia
 import re
-import time
+import concurrent.futures
 from PIL import Image
-from sympy import sympify, diff, symbols, latex, lambdify
+from sympy import sympify, latex
 from duckduckgo_search import DDGS
 
-# 1. ESTÉTICA GROK (ULTRA-DARK & FEED CONTÍNUO)
-st.set_page_config(page_title="Rufino 2.0", layout="centered", page_icon="🧠")
+# --- CONFIGURAÇÃO DE ALTA PERFORMANCE ---
+st.set_page_config(
+    page_title="Rufino 2.0 | Omni Intelligence", 
+    layout="wide", 
+    page_icon="🧠",
+    initial_sidebar_state="collapsed"
+)
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #000000; color: #ffffff; }
-    header, footer, #MainMenu { visibility: hidden; }
-    
-    .chat-row { margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid #111; }
-    .label { font-weight: 800; font-size: 12px; letter-spacing: 1px; color: #555; text-transform: uppercase; }
-    .msg { font-size: 17px; line-height: 1.8; color: #d1d5db; margin-top: 5px; }
-    
-    .stTextInput { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 750px; z-index: 1000; }
-    .stTextInput input { 
-        background-color: #0a0a0a !important; color: white !important; 
-        border: 1px solid #222 !important; border-radius: 12px !important; 
-        padding: 20px !important; font-size: 16px !important;
-    }
-    .spacer { height: 180px; }
-    </style>
+# --- ESTILIZAÇÃO CUSTOMIZADA (CSS INJECT) ---
+def apply_ultra_dark_theme():
+    st.markdown("""
+        <style>
+        @import url('https://googleapis.com');
+        
+        html, body, [data-testid="stAppViewContainer"] {
+            background-color: #050505 !important;
+            font-family: 'Inter', sans-serif;
+            color: #E0E0E0;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] { background-color: transparent; gap: 20px; }
+        .stTabs [data-baseweb="tab"] { color: #555; border: none !important; }
+        .stTabs [data-baseweb="tab-highlight"] { background-color: #ffffff; }
+        
+        .chat-container { border-left: 2px solid #1A1A1A; padding-left: 25px; margin: 30px 0; }
+        .user-label { color: #4A4A4A; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
+        .rufino-label { color: #FFFFFF; font-weight: 900; font-size: 0.7rem; letter-spacing: 2px; }
+        .msg-text { font-size: 1.05rem; line-height: 1.6; margin-top: 8px; }
+        
+        /* Input Fixo Minimalista */
+        .stTextInput input {
+            background-color: #0D0D0D !important;
+            border: 1px solid #222 !important;
+            border-radius: 8px !important;
+            color: white !important;
+        }
+        </style>
     """, unsafe_allow_html=True)
 
-# 2. MOTOR DE BUSCA OMNISCIENTE (A RESPOSTA PARA TUDO)
-wikipedia.set_lang("pt")
-
-def motor_rufino_omnisciente(query):
-    q_clean = query.strip().lower()
-    resumo_final = ""
-
-    # --- CAMADA 1: EXATAS (MATEMÁTICA E LÓGICA) ---
-    if any(c in q_clean for c in '0123456789+-*/^'):
+# --- ENGINE DE INTELIGÊNCIA ---
+class RufinoEngine:
+    @staticmethod
+    def solve_math(query):
+        """Camada 1: Processamento Simbólico."""
         try:
-            q_math = re.sub(r'(\d)([a-z\(])', r'\1*\2', q_clean).replace('^', '**').replace('sen', 'sin')
-            res = sympify(q_math)
-            resumo_final += f"🧬 **ANÁLISE DE EXATAS:**\nResultado: $${latex(res)}$$\n\n"
-        except: pass
+            # Limpeza para evitar injeção de código e padronizar sintaxe
+            clean_q = re.sub(r'[^0-9+\-*/^().,a-zA-Z]', '', query.replace(' ', ''))
+            expr = sympify(clean_q.replace('^', '**'))
+            return f"🧬 **CÁLCULO EXATO:**\n$${latex(expr)}$$"
+        except:
+            return None
 
-    # --- CAMADA 2: PESQUISA WEB LIVE (NOTÍCIAS E ATUALIDADES) ---
-    try:
-        with DDGS() as ddgs:
-            # region 'br-pt' garante respostas em português
-            search_res = [r for r in ddgs.text(q_clean, region='br-pt', max_results=5)]
-            if search_res:
-                resumo_final += "🌐 **CONHECIMENTO LIVE (WEB):**\n\n"
-                for r in search_res:
-                    resumo_final += f"• {r['body']} \n*(Fonte: {r['href']})*\n\n"
-    except: pass
+    @staticmethod
+    def fetch_web(query):
+        """Camada 2: Live Web Search (Assíncrono simulado)."""
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, region='br-pt', max_results=3))
+                if not results: return None
+                header = "🌐 **CONTEXTO EM TEMPO REAL:**\n"
+                body = "\n".join([f"• {r['body'][:250]}... [Fonte]({r['href']})" for r in results])
+                return header + body
+        except:
+            return None
 
-    # --- CAMADA 3: ENCICLOPÉDIA (HISTÓRIA E CIÊNCIA PROFUNDA) ---
-    try:
-        # wikipedia.search corrige erros de digitação (ex: "catolika" -> "católica")
-        sugestoes = wikipedia.search(q_clean)
-        if sugestoes:
-            wiki_res = wikipedia.summary(sugestoes[0], sentences=5)
-            resumo_final += f"📚 **BASE ENCICLOPÉDICA:**\n\n{wiki_res}"
-    except: pass
+    @staticmethod
+    def fetch_wiki(query):
+        """Camada 3: Conhecimento Estruturado."""
+        try:
+            wikipedia.set_lang("pt")
+            search = wikipedia.search(query)
+            if not search: return None
+            summary = wikipedia.summary(search[0], sentences=3)
+            return f"📚 **ENCICLOPÉDIA:**\n{summary}"
+        except:
+            return None
 
-    return resumo_final if resumo_final else "Rufino 2.0 não encontrou dados. Tente usar outras palavras-chave."
+# --- ORQUESTRAÇÃO DE RESPOSTA ---
+def processar_query(query):
+    # Uso de ThreadPoolExecutor para rodar as buscas em paralelo (Ganho de velocidade)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        f_math = executor.submit(RufinoEngine.solve_math, query)
+        f_web = executor.submit(RufinoEngine.fetch_web, query)
+        f_wiki = executor.submit(RufinoEngine.fetch_wiki, query)
+        
+        # Coleta os resultados conforme terminam
+        res_math = f_math.result()
+        res_web = f_web.result()
+        res_wiki = f_wiki.result()
 
-# 3. GESTÃO DO FEED
-if 'feed' not in st.session_state: st.session_state.feed = []
+    if not any([res_math, res_web, res_wiki]):
+        return "⚠️ Não encontrei dados suficientes. Tente refinar sua pergunta."
 
-# --- INTERFACE CENTRAL ---
-st.markdown("<h1 style='text-align: center; margin-top: 30px; font-size: 60px;'>Rufino 2.0</h1>", unsafe_allow_html=True)
+    return "\n\n---\n\n".join(filter(None, [res_math, res_web, res_wiki]))
 
-abas = st.tabs(["💬 CHAT OMNISCIENTE", "👁️ VISION & TOOLS"])
-
-with abas[0]:
-    for chat in st.session_state.feed:
-        st.markdown(f"<div class='chat-row'><div class='label'>VOCÊ</div><div class='msg'>{chat['q']}</div></div>", unsafe_allow_html=True)
-        st.markdown(f"<div class='chat-row'><div class='label' style='color: white;'>RUFINO 2.0</div><div class='msg'>{chat['a']}</div></div>", unsafe_allow_html=True)
+# --- UI / UX ---
+def main():
+    apply_ultra_dark_theme()
     
-    st.markdown("<div class='spacer'></div>", unsafe_allow_html=True)
-    
-    with st.container():
-        with st.form(key='chat_form', clear_on_submit=True):
-            prompt = st.text_input("", placeholder="Rufino 2.0: Pergunte o que quiser...", label_visibility="collapsed")
-            enviar = st.form_submit_button("➔")
-    
-    if enviar and prompt:
-        with st.spinner("Rufino 2.0 consultando fontes mundiais..."):
-            resposta = motor_rufino_omnisciente(prompt)
-            st.session_state.feed.insert(0, {"q": prompt, "a": resposta})
-        st.rerun()
+    if 'history' not in st.session_state:
+        st.session_state.history = []
 
-with abas[1]:
-    st.subheader("👁️ Vision Analysis")
-    foto = st.file_uploader("Suba uma imagem para análise", type=['png', 'jpg', 'jpeg'])
-    if foto: st.image(Image.open(foto), use_container_width=True)
-    
-    st.divider()
-    if st.button("🗑️ Limpar Tudo"):
-        st.session_state.feed = []
-        st.rerun()
+    st.title("RUFINO 2.0")
+    st.caption("Advanced Omni-Search Engine | v2.1.0-Stable")
+
+    tab_chat, tab_vision = st.tabs(["🗨️ OMNI FEED", "👁️ VISION & SYSTEM"])
+
+    with tab_chat:
+        # Renderização do Feed (Top-Down para leitura natural)
+        for chat in st.session_state.history:
+            st.markdown(f"""
+            <div class="chat-container">
+                <div class="user-label">USER_REQUEST</div>
+                <div class="msg-text">{chat['q']}</div>
+                <div style="height:20px"></div>
+                <div class="rufino-label">RUFINO_RESPONSE</div>
+                <div class="msg-text">{chat['a']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Input fixo no fundo
+        st.write("---")
+        with st.form("chat_input", clear_on_submit=True):
+            user_input = st.text_input("Comando:", placeholder="Digite sua dúvida aqui...")
+            col_submit, col_clear = st.columns([1, 6])
+            with col_submit:
+                btn_send = st.form_submit_button("EXECUTAR")
+
+        if btn_send and user_input:
+            with st.spinner("Sincronizando bases de dados..."):
+                response = processar_query(user_input)
+                # Insere no início para aparecer primeiro (opcional, mude para append se preferir bottom)
+                st.session_state.history.insert(0, {"q": user_input, "a": response})
+                st.rerun()
+
+    with tab_vision:
+        st.subheader("Análise de Mídia")
+        uploaded_file = st.file_uploader("Upload de imagem", type=['jpg', 'jpeg', 'png'])
+        if uploaded_file:
+            img = Image.open(uploaded_file)
+            st.image(img, caption="Preview", use_container_width=True)
+            st.info("Módulo de Visão Computacional aguardando API Key externa.")
+        
+        if st.button("RESET SYSTEM"):
+            st.session_state.history = []
+            st.rerun()
+
+if __name__ == "__main__":
+    main()
